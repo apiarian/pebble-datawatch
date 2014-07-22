@@ -3,11 +3,14 @@
 enum {
 	GPS_REQUEST,
 	GPS_LAT_RESPONSE,
-	GPS_LON_RESPONSE
+	GPS_LON_RESPONSE,
+	GPS_AUX_RESPONSE
 };
 
 const int location_decimals = 1e4;
-const time_t location_expiration = (60*5);
+const time_t location_expiration = (60*1)+30;
+const uint32_t lat_key = 0;
+const uint32_t lon_key = 1;
 
 static Window *window;
 static TextLayer *time_layer;
@@ -15,9 +18,18 @@ static TextLayer *date_layer;
 static TextLayer *battery_layer;
 static TextLayer *bluetooth_layer;
 static TextLayer *location_layer;
+static TextLayer *locaux_layer;
+static TextLayer *sunrize_layer;
+static TextLayer *sunset_layer;
+static TextLayer *sun_layer;
+static TextLayer *moonrise_layer;
+static TextLayer *moonset_layer;
+static TextLayer *moonprogress_layer;
 static int lat;
 static int lon;
 static time_t location_update_time;
+//static bool last_bluetooth;
+
 
 static void send_gps_request(){
 	DictionaryIterator *iter;
@@ -38,6 +50,9 @@ static void update_battery(BatteryChargeState charge_state) {
 }
 static void update_bluetooth(bool connected) {
 	text_layer_set_text(bluetooth_layer, connected ? "blu: yes" : "blu: no");
+//	if(connected && !last_bluetooth)
+//		send_gps_request();
+//	last_bluetooth = connected;
 }
 
 static void update_location() {
@@ -68,10 +83,6 @@ static void update_display() {
 
 	strftime(date_text, sizeof(date_text), "%a-%F", t);
 	text_layer_set_text(date_layer,date_text);
-
-	update_battery(battery_state_service_peek());
-	update_bluetooth(bluetooth_connection_service_peek());
-	update_location();
 }
 
 static void out_sent_handler(DictionaryIterator *sent, void *context) {
@@ -79,17 +90,45 @@ static void out_sent_handler(DictionaryIterator *sent, void *context) {
 }
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
 	//outgoing message failed
+	text_layer_set_text(locaux_layer, "com failure");
+	update_location();
 }
 static void in_received_handler(DictionaryIterator *received, void *context) {
+	char errorflag = 0;
 	Tuple *lat_tuple = dict_find(received, GPS_LAT_RESPONSE);
 	if(lat_tuple) {
-		lat = lat_tuple->value->int32;
+		if(lat_tuple->value->int32 != 99)
+			lat = lat_tuple->value->int32;
+		else
+			errorflag = 1;
 	}
 	Tuple *lon_tuple = dict_find(received, GPS_LON_RESPONSE);
 	if(lon_tuple) {
-		lon = lon_tuple->value->int32;
+		if(!errorflag)
+			lon = lon_tuple->value->int32;
+		else {
+			switch(lon_tuple->value->int32) {
+				case 1:
+					text_layer_set_text(locaux_layer, "permission denied");
+					break;
+				case 2:
+					text_layer_set_text(locaux_layer, "unavailable");
+					break;
+				case 3:
+					text_layer_set_text(locaux_layer, "timeout");
+					break;
+			}
+		}
 	}
-	time(&location_update_time);
+	if(!errorflag) {
+		Tuple *aux_tuple = dict_find(received, GPS_AUX_RESPONSE);
+		if(aux_tuple) {
+			text_layer_set_text(locaux_layer, aux_tuple->value->cstring);
+		}
+		time(&location_update_time);
+		persist_write_int(lat_key, lat);
+		persist_write_int(lon_key, lon);
+	}
 	update_location();
 }
 static void in_dropped_handler(AppMessageResult reason, void *context) {
@@ -98,8 +137,7 @@ static void in_dropped_handler(AppMessageResult reason, void *context) {
 
 static void handle_minute_tick(struct tm* tick_time, TimeUnits unit_changed) {
 	update_display();
-	if( time(NULL)-location_update_time > location_expiration)
-		send_gps_request();
+	send_gps_request();
 }
 
 
@@ -117,7 +155,7 @@ static void init(void) {
 	Layer *root_layer = window_get_root_layer(window);
 	GRect frame = layer_get_frame(root_layer);
 
-	int layer_height = 32;
+	int layer_height = 30;
 	int layer_accumulator = layer_height;
 	time_layer = text_layer_create(GRect(0,0,frame.size.w, layer_height));
 	text_layer_set_background_color(time_layer,GColorBlack);
@@ -135,7 +173,72 @@ static void init(void) {
 	layer_add_child(root_layer,text_layer_get_layer(date_layer));
 	layer_accumulator += layer_height;
 
-	layer_height = 24;
+	layer_height = 22;
+	int sun_width = 22;
+	sunrize_layer = text_layer_create(GRect(0,layer_accumulator,(frame.size.w-sun_width)/2,layer_height));
+	text_layer_set_background_color(sunrize_layer, GColorBlack);
+	text_layer_set_text_color(sunrize_layer, GColorWhite);
+	text_layer_set_font(sunrize_layer, small_font);
+	text_layer_set_text_alignment(sunrize_layer, GTextAlignmentLeft);
+	text_layer_set_text(sunrize_layer, "06:00");
+	layer_add_child(root_layer, text_layer_get_layer(sunrize_layer));
+
+	sunset_layer = text_layer_create(GRect((frame.size.w+sun_width)/2,layer_accumulator,(frame.size.w-sun_width)/2,layer_height));
+	text_layer_set_background_color(sunset_layer, GColorBlack);
+	text_layer_set_text_color(sunset_layer, GColorWhite);
+	text_layer_set_font(sunset_layer, small_font);
+	text_layer_set_text_alignment(sunset_layer, GTextAlignmentRight);
+	text_layer_set_text(sunset_layer, "20:00");
+	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
+	layer_accumulator += layer_height;
+
+	layer_height = 22;
+	moonrise_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(moonrise_layer, GColorBlack);
+	text_layer_set_text_color(moonrise_layer, GColorWhite);
+	text_layer_set_font(moonrise_layer, small_font);
+	text_layer_set_text_alignment(moonrise_layer, GTextAlignmentLeft);
+	text_layer_set_text(moonrise_layer, "06:00");
+	layer_add_child(root_layer, text_layer_get_layer(moonrise_layer));
+
+	moonprogress_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(moonprogress_layer, GColorBlack);
+	text_layer_set_text_color(moonprogress_layer, GColorWhite);
+	text_layer_set_font(moonprogress_layer, small_font);
+	text_layer_set_text_alignment(moonprogress_layer, GTextAlignmentCenter);
+	text_layer_set_text(moonprogress_layer, "100%+");
+	layer_add_child(root_layer, text_layer_get_layer(moonprogress_layer));
+
+	moonset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(moonset_layer, GColorBlack);
+	text_layer_set_text_color(moonset_layer, GColorWhite);
+	text_layer_set_font(moonset_layer, small_font);
+	text_layer_set_text_alignment(moonset_layer, GTextAlignmentRight);
+	text_layer_set_text(moonset_layer, "20:00");
+	layer_add_child(root_layer, text_layer_get_layer(moonset_layer));
+	layer_accumulator += layer_height;
+
+	layer_height = 22;
+	location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	text_layer_set_background_color(location_layer, GColorBlack);
+	text_layer_set_text_color(location_layer, GColorWhite);
+	text_layer_set_font(location_layer, small_font);
+	text_layer_set_text_alignment(location_layer, GTextAlignmentCenter);
+	text_layer_set_text(location_layer, "+99.0000 +0.0000");
+	layer_add_child(root_layer, text_layer_get_layer(location_layer));
+	layer_accumulator += layer_height;
+
+	layer_height = 22;
+	locaux_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	text_layer_set_background_color(locaux_layer, GColorBlack);
+	text_layer_set_text_color(locaux_layer, GColorWhite);
+	text_layer_set_font(locaux_layer, small_font);
+	text_layer_set_text_alignment(locaux_layer, GTextAlignmentCenter);
+	text_layer_set_text(locaux_layer, "accuracy: n.a.");
+	layer_add_child(root_layer, text_layer_get_layer(locaux_layer));
+	layer_accumulator += layer_height;
+
+	layer_height = 22;
 	battery_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/2,layer_height));
 	text_layer_set_background_color(battery_layer,GColorBlack);
 	text_layer_set_text_color(battery_layer,GColorWhite);
@@ -153,25 +256,6 @@ static void init(void) {
 	layer_add_child(root_layer,text_layer_get_layer(bluetooth_layer));
 	layer_accumulator += layer_height;
 
-	layer_height = 22;
-	location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
-	text_layer_set_background_color(location_layer, GColorBlack);
-	text_layer_set_text_color(location_layer, GColorWhite);
-	text_layer_set_font(location_layer, small_font);
-	text_layer_set_text_alignment(location_layer, GTextAlignmentCenter);
-	text_layer_set_text(location_layer, "+12.1234 -123.1234");
-	layer_add_child(root_layer, text_layer_get_layer(location_layer));
-	layer_accumulator += layer_height;
-
-	lat = 0;
-	lon = 0;
-	update_display();
-
-	//tick_timer_service_subscribe(SECOND_UNIT, &handle_minute_tick);
-	tick_timer_service_subscribe(MINUTE_UNIT, &handle_minute_tick);
-	battery_state_service_subscribe(&update_battery);
-	bluetooth_connection_service_subscribe(&update_bluetooth);
-
 	app_message_register_inbox_received(in_received_handler);
 	app_message_register_inbox_dropped(in_dropped_handler);
 	app_message_register_outbox_sent(out_sent_handler);
@@ -179,6 +263,25 @@ static void init(void) {
 	const uint32_t inboud_size = 64;
 	const uint32_t outbound_size = 64;
 	app_message_open(inboud_size, outbound_size);
+
+	if(persist_exists(lat_key))
+		lat = persist_read_int(lat_key);
+	else
+		lat = 0;
+	if(persist_exists(lon_key))
+		lon = persist_read_int(lon_key);
+	else
+		lon = 0;
+	update_display();
+
+	update_battery(battery_state_service_peek());
+//	last_bluetooth = bluetooth_connection_service_peek();
+	update_bluetooth(bluetooth_connection_service_peek());
+
+	//tick_timer_service_subscribe(SECOND_UNIT, &handle_minute_tick);
+	tick_timer_service_subscribe(MINUTE_UNIT, &handle_minute_tick);
+	battery_state_service_subscribe(&update_battery);
+	bluetooth_connection_service_subscribe(&update_bluetooth);
 
 	send_gps_request();
 }

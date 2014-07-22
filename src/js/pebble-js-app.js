@@ -11,10 +11,12 @@ Pebble.addEventListener('appmessage',
 				navigator.geolocation.getCurrentPosition(
 					function(p) {
 						var location_decimals = 1e4;
+						console.log(JSON.stringify(p));
 						Pebble.sendAppMessage(
 							{
 								'gps_lat_response': ((p.coords.latitude*location_decimals)|0),
-								'gps_lon_response': ((p.coords.longitude*location_decimals)|0)
+								'gps_lon_response': ((p.coords.longitude*location_decimals)|0),
+								'gps_aux_response': 'accuracy: ' + ((p.coords.accuracy)|0) + 'm'
 							}, function(e) {
 								console.log('Sent GPS');
 							}, function(e) {
@@ -23,19 +25,10 @@ Pebble.addEventListener('appmessage',
 						);
 					},
 					function(error) {
+						console.log(JSON.stringify(error))
 						var lat, lon;
+						lat = 99;
 						lon = error.code;
-						switch(error.code) {
-							case error.TIMEOUT:
-								lat = 99;
-								break;
-							case error.PERMISSION_DENIED:
-								lat = 99;
-								break;
-							case error.POSITION_UNAVAILABLE:
-								lat = 99;
-								break;
-						}
 						Pebble.sendAppMessage({'gps_lat_response':lat, 'gps_lon_response':lon},
 								function(e) {
 									console.log('Sent GPS error code');
@@ -44,7 +37,7 @@ Pebble.addEventListener('appmessage',
 								}
 						);
 					},
-					{'timeout':1000*5, 'maximumAge':1000*60*10}
+					{'timeout':1000*30, 'maximumAge':0/*1000*60*10*/}
 				);
 			}
 		}

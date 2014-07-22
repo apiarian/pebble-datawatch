@@ -12,7 +12,8 @@
 	"appKeys": {
 		"gps_request": 0,
 		"gps_lat_response": 1,
-		"gps_lon_response": 2
+		"gps_lon_response": 2,
+		"gps_aux_response": 3
 	},
 	"resources": {
 		"media": []
