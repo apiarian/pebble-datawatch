@@ -37,7 +37,7 @@ Pebble.addEventListener('appmessage',
 								}
 						);
 					},
-					{'timeout':1000*30, 'maximumAge':0/*1000*60*10*/}
+					{'timeout':1000*45, 'maximumAge':1000*60*1}
 				);
 			}
 		}

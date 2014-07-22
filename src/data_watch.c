@@ -90,7 +90,20 @@ static void out_sent_handler(DictionaryIterator *sent, void *context) {
 }
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
 	//outgoing message failed
-	text_layer_set_text(locaux_layer, "com failure");
+	switch(reason) {
+		case APP_MSG_SEND_TIMEOUT:
+			text_layer_set_text(locaux_layer, "com timeout"); break;
+		case APP_MSG_SEND_REJECTED:
+			text_layer_set_text(locaux_layer, "com rejected"); break;
+		case APP_MSG_NOT_CONNECTED:
+			text_layer_set_text(locaux_layer, "com disconnected"); break;
+		case APP_MSG_APP_NOT_RUNNING:
+			text_layer_set_text(locaux_layer, "com not running"); break;
+		case APP_MSG_BUSY:
+			text_layer_set_text(locaux_layer, "com busy"); break;
+		default:
+			text_layer_set_text(locaux_layer, "com failure"); break;
+	}
 	update_location();
 }
 static void in_received_handler(DictionaryIterator *received, void *context) {
@@ -224,7 +237,7 @@ static void init(void) {
 	text_layer_set_text_color(location_layer, GColorWhite);
 	text_layer_set_font(location_layer, small_font);
 	text_layer_set_text_alignment(location_layer, GTextAlignmentCenter);
-	text_layer_set_text(location_layer, "+99.0000 +0.0000");
+	text_layer_set_text(location_layer, "+0.0000 +0.0000");
 	layer_add_child(root_layer, text_layer_get_layer(location_layer));
 	layer_accumulator += layer_height;
 
@@ -268,10 +281,14 @@ static void init(void) {
 		lat = persist_read_int(lat_key);
 	else
 		lat = 0;
-	if(persist_exists(lon_key))
+	if(persist_exists(lon_key)) {
 		lon = persist_read_int(lon_key);
+		text_layer_set_text(locaux_layer, "cached data");
+	}
 	else
 		lon = 0;
+	update_location();
+
 	update_display();
 
 	update_battery(battery_state_service_peek());
