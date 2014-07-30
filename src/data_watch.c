@@ -31,8 +31,6 @@ static int lon;
 static time_t location_update_time;
 static int location_update_count;
 static time_t timer_start;
-static bool timer_running;
-static bool timer_stopped;
 //static bool last_bluetooth;
 
 
@@ -163,17 +161,15 @@ static void handle_tick(struct tm* tick_time, TimeUnits unit_changed) {
 			location_update_count += 1;
 		}
 	}
-	if(timer_running) {
-		static char timer_text[] = "00:00:00";
-		int elapsed = (int) (time(NULL) - timer_start);
-		int hours = elapsed / 3600;
-		int minutes = (elapsed - hours*3600) / 60;
-		int seconds = elapsed - hours*3600 - minutes*60;
-		struct tm t = {seconds, minutes, hours, 0, 0, 0, 0, 0, 0, 0, 0};
-		strftime(timer_text, sizeof(timer_text), "%H:%M:%S", &t);
-		//snprintf(timer_text, sizeof(timer_text), "%d:%d:%d", hours, minutes, seconds);
-		text_layer_set_text(timer_layer, timer_text);
-	}
+	static char timer_text[] = "00:00:00";
+	int elapsed = (int) (time(NULL) - timer_start);
+	int hours = elapsed / 3600;
+	int minutes = (elapsed - hours*3600) / 60;
+	int seconds = elapsed - hours*3600 - minutes*60;
+	struct tm t = {seconds, minutes, hours, 0, 0, 0, 0, 0, 0, 0, 0};
+	strftime(timer_text, sizeof(timer_text), "%H:%M:%S", &t);
+	//snprintf(timer_text, sizeof(timer_text), "%d:%d:%d", hours, minutes, seconds);
+	text_layer_set_text(timer_layer, timer_text);
 }
 
 static void handle_tap(AccelAxisType axis, int32_t direction) {
@@ -187,17 +183,8 @@ static void handle_tap(AccelAxisType axis, int32_t direction) {
 //			snprintf(tap_text, sizeof(tap_text), "tap Z %d", (int)direction); break;
 //	}
 //	text_layer_set_text(timer_layer, tap_text);
-	if(timer_running) {
-		timer_running = false;
-		//timer_stopped = true;
-		text_layer_set_text(timer_layer, "00:00:00");
-	} else if(timer_stopped) {
-		timer_stopped = false;
-		text_layer_set_text(timer_layer, "00:00:00");
-	} else {
-		timer_running = true;
-		time(&timer_start);
-	}
+	text_layer_set_text(timer_layer, "00:00:00");
+	time(&timer_start);
 }
 
 static void init(void) {
@@ -348,8 +335,9 @@ static void init(void) {
 	update_display();
 
 	update_battery(battery_state_service_peek());
-//	last_bluetooth = bluetooth_connection_service_peek();
 	update_bluetooth(bluetooth_connection_service_peek());
+
+	time(&timer_start);
 
 	tick_timer_service_subscribe(SECOND_UNIT, &handle_tick);
 	battery_state_service_subscribe(&update_battery);
