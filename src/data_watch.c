@@ -25,9 +25,11 @@ static TextLayer *sun_layer;
 static TextLayer *moonrise_layer;
 static TextLayer *moonset_layer;
 static TextLayer *moonprogress_layer;
+static TextLayer *timer_layer;
 static int lat;
 static int lon;
 static time_t location_update_time;
+static int location_update_count;
 //static bool last_bluetooth;
 
 
@@ -150,7 +152,12 @@ static void in_dropped_handler(AppMessageResult reason, void *context) {
 
 static void handle_minute_tick(struct tm* tick_time, TimeUnits unit_changed) {
 	update_display();
-	send_gps_request();
+	if(location_update_count>=5){
+		send_gps_request();
+		location_update_count = 0;
+	} else {
+		location_update_count += 1;
+	}
 }
 
 
@@ -206,30 +213,39 @@ static void init(void) {
 	layer_accumulator += layer_height;
 
 	layer_height = 22;
-	moonrise_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
-	text_layer_set_background_color(moonrise_layer, GColorBlack);
-	text_layer_set_text_color(moonrise_layer, GColorWhite);
-	text_layer_set_font(moonrise_layer, small_font);
-	text_layer_set_text_alignment(moonrise_layer, GTextAlignmentLeft);
-	text_layer_set_text(moonrise_layer, "06:00");
-	layer_add_child(root_layer, text_layer_get_layer(moonrise_layer));
+	timer_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	text_layer_set_background_color(timer_layer, GColorBlack);
+	text_layer_set_text_color(timer_layer, GColorWhite);
+	text_layer_set_font(timer_layer, small_font);
+	text_layer_set_text_alignment(timer_layer, GTextAlignmentCenter);
+	text_layer_set_text(timer_layer, "00:00:00");
+	layer_add_child(root_layer, text_layer_get_layer(timer_layer));
 
-	moonprogress_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
-	text_layer_set_background_color(moonprogress_layer, GColorBlack);
-	text_layer_set_text_color(moonprogress_layer, GColorWhite);
-	text_layer_set_font(moonprogress_layer, small_font);
-	text_layer_set_text_alignment(moonprogress_layer, GTextAlignmentCenter);
-	text_layer_set_text(moonprogress_layer, "100%+");
-	layer_add_child(root_layer, text_layer_get_layer(moonprogress_layer));
-
-	moonset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
-	text_layer_set_background_color(moonset_layer, GColorBlack);
-	text_layer_set_text_color(moonset_layer, GColorWhite);
-	text_layer_set_font(moonset_layer, small_font);
-	text_layer_set_text_alignment(moonset_layer, GTextAlignmentRight);
-	text_layer_set_text(moonset_layer, "20:00");
-	layer_add_child(root_layer, text_layer_get_layer(moonset_layer));
-	layer_accumulator += layer_height;
+//	layer_height = 22;
+//	moonrise_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
+//	text_layer_set_background_color(moonrise_layer, GColorBlack);
+//	text_layer_set_text_color(moonrise_layer, GColorWhite);
+//	text_layer_set_font(moonrise_layer, small_font);
+//	text_layer_set_text_alignment(moonrise_layer, GTextAlignmentLeft);
+//	text_layer_set_text(moonrise_layer, "06:00");
+//	layer_add_child(root_layer, text_layer_get_layer(moonrise_layer));
+//
+//	moonprogress_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+//	text_layer_set_background_color(moonprogress_layer, GColorBlack);
+//	text_layer_set_text_color(moonprogress_layer, GColorWhite);
+//	text_layer_set_font(moonprogress_layer, small_font);
+//	text_layer_set_text_alignment(moonprogress_layer, GTextAlignmentCenter);
+//	text_layer_set_text(moonprogress_layer, "100%+");
+//	layer_add_child(root_layer, text_layer_get_layer(moonprogress_layer));
+//
+//	moonset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+//	text_layer_set_background_color(moonset_layer, GColorBlack);
+//	text_layer_set_text_color(moonset_layer, GColorWhite);
+//	text_layer_set_font(moonset_layer, small_font);
+//	text_layer_set_text_alignment(moonset_layer, GTextAlignmentRight);
+//	text_layer_set_text(moonset_layer, "20:00");
+//	layer_add_child(root_layer, text_layer_get_layer(moonset_layer));
+//	layer_accumulator += layer_height;
 
 	layer_height = 22;
 	location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
@@ -307,9 +323,19 @@ static void deinit(void) {
 	tick_timer_service_unsubscribe();
 	battery_state_service_unsubscribe();
 	bluetooth_connection_service_unsubscribe();
+	app_message_deregister_callbacks();
 	text_layer_destroy(time_layer);
 	text_layer_destroy(date_layer);
+	text_layer_destroy(sunrize_layer);
+	text_layer_destroy(sunset_layer);
+	text_layer_destroy(timer_layer);
+//	text_layer_destroy(moonrise_layer);
+//	text_layer_destroy(moonprogress_layer);
+//	text_layer_destroy(moonset_layer);
+	text_layer_destroy(location_layer);
+	text_layer_destroy(locaux_layer);
 	text_layer_destroy(battery_layer);
+	text_layer_destroy(bluetooth_layer);
 	window_destroy(window);
 }
 
