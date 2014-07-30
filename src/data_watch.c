@@ -30,6 +30,9 @@ static int lat;
 static int lon;
 static time_t location_update_time;
 static int location_update_count;
+static time_t timer_start;
+static bool timer_running;
+static bool timer_stopped;
 //static bool last_bluetooth;
 
 
@@ -150,16 +153,52 @@ static void in_dropped_handler(AppMessageResult reason, void *context) {
 	//incoming dropped
 }
 
-static void handle_minute_tick(struct tm* tick_time, TimeUnits unit_changed) {
-	update_display();
-	if(location_update_count>=5){
-		send_gps_request();
-		location_update_count = 0;
-	} else {
-		location_update_count += 1;
+static void handle_tick(struct tm* tick_time, TimeUnits unit_changed) {
+	if(unit_changed & MINUTE_UNIT) {
+		update_display();
+		if(location_update_count>=5){
+			send_gps_request();
+			location_update_count = 0;
+		} else {
+			location_update_count += 1;
+		}
+	}
+	if(timer_running) {
+		static char timer_text[] = "00:00:00";
+		int elapsed = (int) (time(NULL) - timer_start);
+		int hours = elapsed / 3600;
+		int minutes = (elapsed - hours*3600) / 60;
+		int seconds = elapsed - hours*3600 - minutes*60;
+		struct tm t = {seconds, minutes, hours, 0, 0, 0, 0, 0, 0, 0, 0};
+		strftime(timer_text, sizeof(timer_text), "%H:%M:%S", &t);
+		//snprintf(timer_text, sizeof(timer_text), "%d:%d:%d", hours, minutes, seconds);
+		text_layer_set_text(timer_layer, timer_text);
 	}
 }
 
+static void handle_tap(AccelAxisType axis, int32_t direction) {
+//	static char tap_text[] = "1234567890123";
+//	switch(axis) {
+//		case ACCEL_AXIS_X:
+//			snprintf(tap_text, sizeof(tap_text), "tap X %d", (int)direction); break;
+//		case ACCEL_AXIS_Y:
+//			snprintf(tap_text, sizeof(tap_text), "tap Y %d", (int)direction); break;
+//		case ACCEL_AXIS_Z:
+//			snprintf(tap_text, sizeof(tap_text), "tap Z %d", (int)direction); break;
+//	}
+//	text_layer_set_text(timer_layer, tap_text);
+	if(timer_running) {
+		timer_running = false;
+		//timer_stopped = true;
+		text_layer_set_text(timer_layer, "00:00:00");
+	} else if(timer_stopped) {
+		timer_stopped = false;
+		text_layer_set_text(timer_layer, "00:00:00");
+	} else {
+		timer_running = true;
+		time(&timer_start);
+	}
+}
 
 static void init(void) {
 	GFont time_font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
@@ -220,6 +259,7 @@ static void init(void) {
 	text_layer_set_text_alignment(timer_layer, GTextAlignmentCenter);
 	text_layer_set_text(timer_layer, "00:00:00");
 	layer_add_child(root_layer, text_layer_get_layer(timer_layer));
+	layer_accumulator += layer_height;
 
 //	layer_height = 22;
 //	moonrise_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
@@ -311,10 +351,10 @@ static void init(void) {
 //	last_bluetooth = bluetooth_connection_service_peek();
 	update_bluetooth(bluetooth_connection_service_peek());
 
-	//tick_timer_service_subscribe(SECOND_UNIT, &handle_minute_tick);
-	tick_timer_service_subscribe(MINUTE_UNIT, &handle_minute_tick);
+	tick_timer_service_subscribe(SECOND_UNIT, &handle_tick);
 	battery_state_service_subscribe(&update_battery);
 	bluetooth_connection_service_subscribe(&update_bluetooth);
+	accel_tap_service_subscribe(&handle_tap);
 
 	send_gps_request();
 }
@@ -323,6 +363,7 @@ static void deinit(void) {
 	tick_timer_service_unsubscribe();
 	battery_state_service_unsubscribe();
 	bluetooth_connection_service_unsubscribe();
+	accel_tap_service_unsubscribe();
 	app_message_deregister_callbacks();
 	text_layer_destroy(time_layer);
 	text_layer_destroy(date_layer);
