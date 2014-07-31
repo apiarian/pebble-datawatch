@@ -1,5 +1,5 @@
 #include <pebble.h>
-
+#include "suncalc.h"
 enum {
 	GPS_REQUEST,
 	GPS_LAT_RESPONSE,
@@ -28,6 +28,8 @@ static TextLayer *moonprogress_layer;
 static TextLayer *timer_layer;
 static int lat;
 static int lon;
+static int tz = -5;
+static bool daylight_savings = true;
 static time_t location_update_time;
 static int location_update_count;
 static time_t timer_start;
@@ -58,6 +60,16 @@ static void update_bluetooth(bool connected) {
 //	last_bluetooth = connected;
 }
 
+void adjustTimezone(float* time) {
+	int corrected_time = 12 + tz;
+	if(daylight_savings) {
+		corrected_time += 1;
+	}
+	*time += corrected_time;
+	if(*time > 24) *time -= 24;
+	if(*time < 0) *time += 24;
+}
+
 static void update_location() {
 	static char location_text[] = "+12.1234 -123.1234";
 	int lat_a = lat/location_decimals;
@@ -72,6 +84,21 @@ static void update_location() {
 	else
 		text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text(location_layer, location_text);
+
+	time_t now = time(NULL);
+	struct tm *t = localtime(&now);
+	float sunriseTime = calcSunRise(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
+	float sunsetTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
+	adjustTimezone(&sunriseTime);
+	adjustTimezone(&sunsetTime);
+	struct tm sunrize = {0, (int)(60*(sunriseTime-((int)(sunriseTime)))), (int)sunriseTime-12, 0, 0, 0, 0, 0, 0, 0, 0};
+	struct tm sunset = {0, (int)(60*(sunsetTime-((int)(sunsetTime)))), (int)sunsetTime+12, 0, 0, 0, 0, 0, 0, 0, 0};
+	static char sunrize_text[] = "00:00";
+	static char sunset_text[] = "00:00";
+	strftime(sunrize_text, sizeof(sunrize_text), "%H:%M", &sunrize);
+	strftime(sunset_text, sizeof(sunset_text), "%H:%M", &sunset);
+	text_layer_set_text(sunrize_layer, sunrize_text);
+	text_layer_set_text(sunset_layer, sunset_text);
 }
 
 static void update_display() {
