@@ -1,7 +1,7 @@
 {
 	"uuid": "1be09ebf-ca9c-4690-946a-5d82884530d5",
-	"shortName": "data_watch",
-	"longName": "data_watch",
+	"shortName": "Data Watch",
+	"longName": "Data Watch",
 	"companyName": "megamicron",
 	"capabilities": ["location"], 
 	"versionCode": 1,
