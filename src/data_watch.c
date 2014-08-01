@@ -23,10 +23,7 @@ static TextLayer *location_layer;
 static TextLayer *locaux_layer;
 static TextLayer *sunrize_layer;
 static TextLayer *sunset_layer;
-static TextLayer *sun_layer;
-static TextLayer *moonrise_layer;
-static TextLayer *moonset_layer;
-static TextLayer *moonprogress_layer;
+static TextLayer *twilight_layer;
 static TextLayer *timer_layer;
 static int lat;
 static int lon;
@@ -86,16 +83,20 @@ static void update_location() {
 	struct tm *t = localtime(&now);
 	float sunriseTime = calcSunRise(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
 	float sunsetTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
+	float twilightTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_CIVIL) - sunsetTime; 
 	adjustTimezone(&sunriseTime);
 	adjustTimezone(&sunsetTime);
 	struct tm sunrize = {0, (int)(60*(sunriseTime-((int)(sunriseTime)))), (int)sunriseTime-12, 0, 0, 0, 0, 0, 0, 0, 0};
 	struct tm sunset = {0, (int)(60*(sunsetTime-((int)(sunsetTime)))), (int)sunsetTime+12, 0, 0, 0, 0, 0, 0, 0, 0};
 	static char sunrize_text[] = "00:00";
 	static char sunset_text[] = "00:00";
+	static char twilight_text[] = "-40m+";
 	strftime(sunrize_text, sizeof(sunrize_text), "%H:%M", &sunrize);
 	strftime(sunset_text, sizeof(sunset_text), "%H:%M", &sunset);
+	snprintf(twilight_text, sizeof(twilight_text), "-%dm+", (int)(twilightTime*60));
 	text_layer_set_text(sunrize_layer, sunrize_text);
 	text_layer_set_text(sunset_layer, sunset_text);
+	text_layer_set_text(twilight_layer, twilight_text);
 }
 
 static void update_display() {
@@ -111,24 +112,6 @@ static void update_display() {
 	strftime(date_text, sizeof(date_text), "%a-%F", t);
 	text_layer_set_text(date_layer,date_text);
 
-	int y, m;
-	double jd;
-	int jdn;
-	y = t->tm_year + 1900;
-	m = t->tm_mon + 1;
-	jdn = t->tm_mday-32075+1461*(y+4800+(m-14)/12)/4+367*(m-2-(m-14)/12*12)/12-3*((y+4900+(m-14)/12)/100)/4;
-	jd = jdn-2451550.1;
-	jd /= 29.530588853;
-	jd -= (int)jd;
-	if(jd<1.0/16)        text_layer_set_text(moonprogress_layer, "new");
-	else if (jd<3.0/16)  text_layer_set_text(moonprogress_layer, "wx c");
-	else if (jd<5.0/16)  text_layer_set_text(moonprogress_layer, "f qt");
-	else if (jd<7.0/16)  text_layer_set_text(moonprogress_layer, "wx g");
-	else if (jd<9.0/16)  text_layer_set_text(moonprogress_layer, "full");
-	else if (jd<11.0/16) text_layer_set_text(moonprogress_layer, "wn g");
-	else if (jd<13.0/16) text_layer_set_text(moonprogress_layer, "l qt");
-	else if (jd<15.0/16) text_layer_set_text(moonprogress_layer, "wn c");
-	else                 text_layer_set_text(moonprogress_layer, "new");
 }
 
 static void out_sent_handler(DictionaryIterator *sent, void *context) {
@@ -286,13 +269,13 @@ static void init(void) {
 	text_layer_set_text(sunrize_layer, "06:00");
 	layer_add_child(root_layer, text_layer_get_layer(sunrize_layer));
 
-	moonprogress_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
-	text_layer_set_background_color(moonprogress_layer, GColorBlack);
-	text_layer_set_text_color(moonprogress_layer, GColorWhite);
-	text_layer_set_font(moonprogress_layer, small_font);
-	text_layer_set_text_alignment(moonprogress_layer, GTextAlignmentCenter);
-	text_layer_set_text(moonprogress_layer, "100%+");
-	layer_add_child(root_layer, text_layer_get_layer(moonprogress_layer));
+	twilight_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(twilight_layer, GColorBlack);
+	text_layer_set_text_color(twilight_layer, GColorWhite);
+	text_layer_set_font(twilight_layer, small_font);
+	text_layer_set_text_alignment(twilight_layer, GTextAlignmentCenter);
+	text_layer_set_text(twilight_layer, "100%+");
+	layer_add_child(root_layer, text_layer_get_layer(twilight_layer));
 
 	sunset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
 	text_layer_set_background_color(sunset_layer, GColorBlack);
@@ -302,32 +285,6 @@ static void init(void) {
 	text_layer_set_text(sunset_layer, "20:00");
 	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
 	layer_accumulator += layer_height;
-
-//	layer_height = 22;
-//	moonrise_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
-//	text_layer_set_background_color(moonrise_layer, GColorBlack);
-//	text_layer_set_text_color(moonrise_layer, GColorWhite);
-//	text_layer_set_font(moonrise_layer, small_font);
-//	text_layer_set_text_alignment(moonrise_layer, GTextAlignmentLeft);
-//	text_layer_set_text(moonrise_layer, "06:00");
-//	layer_add_child(root_layer, text_layer_get_layer(moonrise_layer));
-//
-//	moonprogress_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
-//	text_layer_set_background_color(moonprogress_layer, GColorBlack);
-//	text_layer_set_text_color(moonprogress_layer, GColorWhite);
-//	text_layer_set_font(moonprogress_layer, small_font);
-//	text_layer_set_text_alignment(moonprogress_layer, GTextAlignmentCenter);
-//	text_layer_set_text(moonprogress_layer, "100%+");
-//	layer_add_child(root_layer, text_layer_get_layer(moonprogress_layer));
-//
-//	moonset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
-//	text_layer_set_background_color(moonset_layer, GColorBlack);
-//	text_layer_set_text_color(moonset_layer, GColorWhite);
-//	text_layer_set_font(moonset_layer, small_font);
-//	text_layer_set_text_alignment(moonset_layer, GTextAlignmentRight);
-//	text_layer_set_text(moonset_layer, "20:00");
-//	layer_add_child(root_layer, text_layer_get_layer(moonset_layer));
-//	layer_accumulator += layer_height;
 
 	layer_height = 22;
 	location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
@@ -416,10 +373,8 @@ static void deinit(void) {
 	text_layer_destroy(date_layer);
 	text_layer_destroy(sunrize_layer);
 	text_layer_destroy(sunset_layer);
+	text_layer_destroy(twilight_layer);
 	text_layer_destroy(timer_layer);
-//	text_layer_destroy(moonrise_layer);
-//	text_layer_destroy(moonprogress_layer);
-//	text_layer_destroy(moonset_layer);
 	text_layer_destroy(location_layer);
 	text_layer_destroy(locaux_layer);
 	text_layer_destroy(battery_layer);
