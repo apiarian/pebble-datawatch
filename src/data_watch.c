@@ -72,7 +72,7 @@ static void update_location() {
 	int lon_a = lon/location_decimals;
 	int lon_b = lon-lon_a*location_decimals;
 	lon_b = lon_b>0 ? lon_b : -1*lon_b;
-	snprintf(location_text, sizeof(location_text), "%+d.%d %+d.%d", lat_a, lat_b, lon_a, lon_b);
+	snprintf(location_text, sizeof(location_text), "%+d.%.3d %+d.%.3d", lat_a, lat_b/10, lon_a, lon_b/10);
 	if( (time(NULL) - location_update_time) > location_expiration )
 		text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
 	else
@@ -219,11 +219,6 @@ static void handle_tap(AccelAxisType axis, int32_t direction) {
 }
 
 static void init(void) {
-	GFont time_font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
-	GFont mid_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
-	GFont small_font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
-	GFont tiny_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
-
 	window = window_create();
 	const bool animated = true;
 	window_stack_push(window, animated);
@@ -232,12 +227,12 @@ static void init(void) {
 	Layer *root_layer = window_get_root_layer(window);
 	GRect frame = layer_get_frame(root_layer);
 
-	int layer_height = 30;
+	int layer_height = 46;
 	int layer_accumulator = layer_height;
 	time_layer = text_layer_create(GRect(0,0,frame.size.w, layer_height));
 	text_layer_set_background_color(time_layer,GColorBlack);
 	text_layer_set_text_color(time_layer,GColorWhite);
-	text_layer_set_font(time_layer,time_font);
+	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_MEDIUM_NUMBERS));
 	text_layer_set_text_alignment(time_layer,GTextAlignmentCenter);
 	layer_add_child(root_layer,text_layer_get_layer(time_layer));
 
@@ -245,16 +240,16 @@ static void init(void) {
 	date_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	text_layer_set_background_color(date_layer,GColorBlack);
 	text_layer_set_text_color(date_layer,GColorWhite);
-	text_layer_set_font(date_layer, mid_font);
+	text_layer_set_font(date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(date_layer,GTextAlignmentCenter);
 	layer_add_child(root_layer,text_layer_get_layer(date_layer));
 	layer_accumulator += layer_height;
 
-	layer_height = 22;
+	layer_height = 28;
 	timer_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	text_layer_set_background_color(timer_layer, GColorBlack);
 	text_layer_set_text_color(timer_layer, GColorWhite);
-	text_layer_set_font(timer_layer, small_font);
+	text_layer_set_font(timer_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(timer_layer, GTextAlignmentCenter);
 	text_layer_set_text(timer_layer, "00:00:00");
 	layer_add_child(root_layer, text_layer_get_layer(timer_layer));
@@ -264,7 +259,7 @@ static void init(void) {
 	sunrize_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
 	text_layer_set_background_color(sunrize_layer, GColorBlack);
 	text_layer_set_text_color(sunrize_layer, GColorWhite);
-	text_layer_set_font(sunrize_layer, small_font);
+	text_layer_set_font(sunrize_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(sunrize_layer, GTextAlignmentLeft);
 	text_layer_set_text(sunrize_layer, "06:00");
 	layer_add_child(root_layer, text_layer_get_layer(sunrize_layer));
@@ -272,7 +267,7 @@ static void init(void) {
 	twilight_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
 	text_layer_set_background_color(twilight_layer, GColorBlack);
 	text_layer_set_text_color(twilight_layer, GColorWhite);
-	text_layer_set_font(twilight_layer, small_font);
+	text_layer_set_font(twilight_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(twilight_layer, GTextAlignmentCenter);
 	text_layer_set_text(twilight_layer, "100%+");
 	layer_add_child(root_layer, text_layer_get_layer(twilight_layer));
@@ -280,7 +275,7 @@ static void init(void) {
 	sunset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
 	text_layer_set_background_color(sunset_layer, GColorBlack);
 	text_layer_set_text_color(sunset_layer, GColorWhite);
-	text_layer_set_font(sunset_layer, small_font);
+	text_layer_set_font(sunset_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(sunset_layer, GTextAlignmentRight);
 	text_layer_set_text(sunset_layer, "20:00");
 	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
@@ -290,7 +285,7 @@ static void init(void) {
 	location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	text_layer_set_background_color(location_layer, GColorBlack);
 	text_layer_set_text_color(location_layer, GColorWhite);
-	text_layer_set_font(location_layer, small_font);
+	text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(location_layer, GTextAlignmentCenter);
 	text_layer_set_text(location_layer, "+0.0000 +0.0000");
 	layer_add_child(root_layer, text_layer_get_layer(location_layer));
@@ -300,17 +295,17 @@ static void init(void) {
 	locaux_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	text_layer_set_background_color(locaux_layer, GColorBlack);
 	text_layer_set_text_color(locaux_layer, GColorWhite);
-	text_layer_set_font(locaux_layer, small_font);
+	text_layer_set_font(locaux_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(locaux_layer, GTextAlignmentCenter);
 	text_layer_set_text(locaux_layer, "accuracy: n.a.");
-	layer_add_child(root_layer, text_layer_get_layer(locaux_layer));
-	layer_accumulator += layer_height;
+	//layer_add_child(root_layer, text_layer_get_layer(locaux_layer));
+	//layer_accumulator += layer_height;
 
 	layer_height = 22;
 	battery_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/2,layer_height));
 	text_layer_set_background_color(battery_layer,GColorBlack);
 	text_layer_set_text_color(battery_layer,GColorWhite);
-	text_layer_set_font(battery_layer, small_font);
+	text_layer_set_font(battery_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(battery_layer,GTextAlignmentLeft);
 	text_layer_set_text(battery_layer, "bat: --%");
 	layer_add_child(root_layer,text_layer_get_layer(battery_layer));
@@ -318,7 +313,7 @@ static void init(void) {
 	bluetooth_layer = text_layer_create(GRect(frame.size.w/2,layer_accumulator,frame.size.w/2,layer_height));
 	text_layer_set_background_color(bluetooth_layer,GColorBlack);
 	text_layer_set_text_color(bluetooth_layer,GColorWhite);
-	text_layer_set_font(bluetooth_layer, small_font);
+	text_layer_set_font(bluetooth_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
 	text_layer_set_text_alignment(bluetooth_layer,GTextAlignmentRight);
 	text_layer_set_text(bluetooth_layer, "blu: n.a.");
 	layer_add_child(root_layer,text_layer_get_layer(bluetooth_layer));
