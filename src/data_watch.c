@@ -110,6 +110,25 @@ static void update_display() {
 
 	strftime(date_text, sizeof(date_text), "%a-%F", t);
 	text_layer_set_text(date_layer,date_text);
+
+	int y, m;
+	double jd;
+	int jdn;
+	y = t->tm_year + 1900;
+	m = t->tm_mon + 1;
+	jdn = t->tm_mday-32075+1461*(y+4800+(m-14)/12)/4+367*(m-2-(m-14)/12*12)/12-3*((y+4900+(m-14)/12)/100)/4;
+	jd = jdn-2451550.1;
+	jd /= 29.530588853;
+	jd -= (int)jd;
+	if(jd<1.0/16)        text_layer_set_text(moonprogress_layer, "new");
+	else if (jd<3.0/16)  text_layer_set_text(moonprogress_layer, "wx c");
+	else if (jd<5.0/16)  text_layer_set_text(moonprogress_layer, "f qt");
+	else if (jd<7.0/16)  text_layer_set_text(moonprogress_layer, "wx g");
+	else if (jd<9.0/16)  text_layer_set_text(moonprogress_layer, "full");
+	else if (jd<11.0/16) text_layer_set_text(moonprogress_layer, "wn g");
+	else if (jd<13.0/16) text_layer_set_text(moonprogress_layer, "l qt");
+	else if (jd<15.0/16) text_layer_set_text(moonprogress_layer, "wn c");
+	else                 text_layer_set_text(moonprogress_layer, "new");
 }
 
 static void out_sent_handler(DictionaryIterator *sent, void *context) {
@@ -249,25 +268,6 @@ static void init(void) {
 	layer_accumulator += layer_height;
 
 	layer_height = 22;
-	int sun_width = 22;
-	sunrize_layer = text_layer_create(GRect(0,layer_accumulator,(frame.size.w-sun_width)/2,layer_height));
-	text_layer_set_background_color(sunrize_layer, GColorBlack);
-	text_layer_set_text_color(sunrize_layer, GColorWhite);
-	text_layer_set_font(sunrize_layer, small_font);
-	text_layer_set_text_alignment(sunrize_layer, GTextAlignmentLeft);
-	text_layer_set_text(sunrize_layer, "06:00");
-	layer_add_child(root_layer, text_layer_get_layer(sunrize_layer));
-
-	sunset_layer = text_layer_create(GRect((frame.size.w+sun_width)/2,layer_accumulator,(frame.size.w-sun_width)/2,layer_height));
-	text_layer_set_background_color(sunset_layer, GColorBlack);
-	text_layer_set_text_color(sunset_layer, GColorWhite);
-	text_layer_set_font(sunset_layer, small_font);
-	text_layer_set_text_alignment(sunset_layer, GTextAlignmentRight);
-	text_layer_set_text(sunset_layer, "20:00");
-	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
-	layer_accumulator += layer_height;
-
-	layer_height = 22;
 	timer_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	text_layer_set_background_color(timer_layer, GColorBlack);
 	text_layer_set_text_color(timer_layer, GColorWhite);
@@ -275,6 +275,32 @@ static void init(void) {
 	text_layer_set_text_alignment(timer_layer, GTextAlignmentCenter);
 	text_layer_set_text(timer_layer, "00:00:00");
 	layer_add_child(root_layer, text_layer_get_layer(timer_layer));
+	layer_accumulator += layer_height;
+
+	layer_height = 22;
+	sunrize_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(sunrize_layer, GColorBlack);
+	text_layer_set_text_color(sunrize_layer, GColorWhite);
+	text_layer_set_font(sunrize_layer, small_font);
+	text_layer_set_text_alignment(sunrize_layer, GTextAlignmentLeft);
+	text_layer_set_text(sunrize_layer, "06:00");
+	layer_add_child(root_layer, text_layer_get_layer(sunrize_layer));
+
+	moonprogress_layer = text_layer_create(GRect(frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(moonprogress_layer, GColorBlack);
+	text_layer_set_text_color(moonprogress_layer, GColorWhite);
+	text_layer_set_font(moonprogress_layer, small_font);
+	text_layer_set_text_alignment(moonprogress_layer, GTextAlignmentCenter);
+	text_layer_set_text(moonprogress_layer, "100%+");
+	layer_add_child(root_layer, text_layer_get_layer(moonprogress_layer));
+
+	sunset_layer = text_layer_create(GRect(2*frame.size.w/3,layer_accumulator,frame.size.w/3,layer_height));
+	text_layer_set_background_color(sunset_layer, GColorBlack);
+	text_layer_set_text_color(sunset_layer, GColorWhite);
+	text_layer_set_font(sunset_layer, small_font);
+	text_layer_set_text_alignment(sunset_layer, GTextAlignmentRight);
+	text_layer_set_text(sunset_layer, "20:00");
+	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
 	layer_accumulator += layer_height;
 
 //	layer_height = 22;
