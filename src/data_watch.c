@@ -4,13 +4,15 @@ enum {
 	GPS_REQUEST,
 	GPS_LAT_RESPONSE,
 	GPS_LON_RESPONSE,
-	GPS_AUX_RESPONSE
+	GPS_AUX_RESPONSE,
+	GPS_UTC_OFFSET_RESPONSE
 };
 
 const int location_decimals = 1e4;
 const time_t location_expiration = (60*1)+30;
 const uint32_t lat_key = 0;
 const uint32_t lon_key = 1;
+const uint32_t utc_key = 2;
 
 static Window *window;
 static TextLayer *time_layer;
@@ -28,12 +30,10 @@ static TextLayer *moonprogress_layer;
 static TextLayer *timer_layer;
 static int lat;
 static int lon;
-static int tz = -5;
-static bool daylight_savings = true;
+static int utc_offset;
 static time_t location_update_time;
 static int location_update_count;
 static time_t timer_start;
-//static bool last_bluetooth;
 
 
 static void send_gps_request(){
@@ -55,17 +55,14 @@ static void update_battery(BatteryChargeState charge_state) {
 }
 static void update_bluetooth(bool connected) {
 	text_layer_set_text(bluetooth_layer, connected ? "blu: yes" : "blu: no");
-//	if(connected && !last_bluetooth)
-//		send_gps_request();
-//	last_bluetooth = connected;
 }
 
 void adjustTimezone(float* time) {
-	int corrected_time = 12 + tz;
-	if(daylight_savings) {
-		corrected_time += 1;
-	}
-	*time += corrected_time;
+	//int corrected_time = 12 + tz;
+	//if(daylight_savings) {
+	//	corrected_time += 1;
+	//}
+	*time += 12 - utc_offset;
 	if(*time > 24) *time -= 24;
 	if(*time < 0) *time += 24;
 }
@@ -168,9 +165,14 @@ static void in_received_handler(DictionaryIterator *received, void *context) {
 		if(aux_tuple) {
 			text_layer_set_text(locaux_layer, aux_tuple->value->cstring);
 		}
+		Tuple *utc_offset_tuple = dict_find(received, GPS_UTC_OFFSET_RESPONSE);
+		if(utc_offset_tuple) {
+			utc_offset = utc_offset_tuple->value->int32;
+		}
 		time(&location_update_time);
 		persist_write_int(lat_key, lat);
 		persist_write_int(lon_key, lon);
+		persist_write_int(utc_key, utc_offset);
 	}
 	update_location();
 }
@@ -357,6 +359,10 @@ static void init(void) {
 	}
 	else
 		lon = 0;
+	if(persist_exists(utc_key))
+		utc_offset = persist_read_int(utc_key);
+	else
+		utc_offset = 0;
 	update_location();
 
 	update_display();

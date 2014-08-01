@@ -12,11 +12,13 @@ Pebble.addEventListener('appmessage',
 					function(p) {
 						var location_decimals = 1e4;
 						console.log(JSON.stringify(p));
+						console.log(new Date().getTimezoneOffset() / 60);
 						Pebble.sendAppMessage(
 							{
 								'gps_lat_response': ((p.coords.latitude*location_decimals)|0),
 								'gps_lon_response': ((p.coords.longitude*location_decimals)|0),
-								'gps_aux_response': 'accuracy: ' + ((p.coords.accuracy)|0) + 'm'
+								'gps_aux_response': 'accuracy: ' + ((p.coords.accuracy)|0) + 'm',
+								'gps_utc_offset_response': new Date().getTimezoneOffset() / 60
 							}, function(e) {
 								console.log('Sent GPS');
 							}, function(e) {
