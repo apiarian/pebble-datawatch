@@ -237,6 +237,15 @@ static void init(void) {
 	int layer_height = 0;
 	int layer_accumulator = 0;
 
+	layer_height = 28;
+	date_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	text_layer_set_background_color(date_layer,GColorBlack);
+	text_layer_set_text_color(date_layer,GColorWhite);
+	text_layer_set_font(date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	text_layer_set_text_alignment(date_layer,GTextAlignmentCenter);
+	layer_add_child(root_layer,text_layer_get_layer(date_layer));
+	layer_accumulator += layer_height;
+
 	layer_height = 22;
 	utc_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	text_layer_set_background_color(utc_layer,GColorBlack);
@@ -254,15 +263,6 @@ static void init(void) {
 	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_MEDIUM_NUMBERS));
 	text_layer_set_text_alignment(time_layer,GTextAlignmentCenter);
 	layer_add_child(root_layer,text_layer_get_layer(time_layer));
-	layer_accumulator += layer_height;
-
-	layer_height = 28;
-	date_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
-	text_layer_set_background_color(date_layer,GColorBlack);
-	text_layer_set_text_color(date_layer,GColorWhite);
-	text_layer_set_font(date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-	text_layer_set_text_alignment(date_layer,GTextAlignmentCenter);
-	layer_add_child(root_layer,text_layer_get_layer(date_layer));
 	layer_accumulator += layer_height;
 
 	layer_height = 28;
