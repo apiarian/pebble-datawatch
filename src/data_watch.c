@@ -16,11 +16,12 @@ const uint32_t utc_key = 2;
 
 static Window *window;
 static TextLayer *time_layer;
+static TextLayer *utc_layer;
 static TextLayer *date_layer;
 static TextLayer *battery_layer;
 static TextLayer *bluetooth_layer;
-static TextLayer *location_layer;
-static TextLayer *locaux_layer;
+// static TextLayer *location_layer;
+// static TextLayer *locaux_layer;
 static TextLayer *sunrize_layer;
 static TextLayer *sunset_layer;
 static TextLayer *twilight_layer;
@@ -55,48 +56,9 @@ static void update_bluetooth(bool connected) {
 }
 
 void adjustTimezone(float* time) {
-	//int corrected_time = 12 + tz;
-	//if(daylight_savings) {
-	//	corrected_time += 1;
-	//}
-	*time += 12 - utc_offset;
+	*time += 12.0 - utc_offset/60.0;
 	if(*time > 24) *time -= 24;
 	if(*time < 0) *time += 24;
-}
-
-static void update_location() {
-	static char location_text[] = "+12.1234 -123.1234";
-	int lat_a = lat/location_decimals;
-	int lat_b = lat-lat_a*location_decimals;
-	lat_b = lat_b>0 ? lat_b : -1*lat_b;
-	int lon_a = lon/location_decimals;
-	int lon_b = lon-lon_a*location_decimals;
-	lon_b = lon_b>0 ? lon_b : -1*lon_b;
-	snprintf(location_text, sizeof(location_text), "%+d.%.3d %+d.%.3d", lat_a, lat_b/10, lon_a, lon_b/10);
-	if( (time(NULL) - location_update_time) > location_expiration )
-		text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-	else
-		text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-	text_layer_set_text(location_layer, location_text);
-
-	time_t now = time(NULL);
-	struct tm *t = localtime(&now);
-	float sunriseTime = calcSunRise(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
-	float sunsetTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
-	float twilightTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_CIVIL) - sunsetTime; 
-	adjustTimezone(&sunriseTime);
-	adjustTimezone(&sunsetTime);
-	struct tm sunrize = {0, (int)(60*(sunriseTime-((int)(sunriseTime)))), (int)sunriseTime-12, 0, 0, 0, 0, 0, 0, 0, 0};
-	struct tm sunset = {0, (int)(60*(sunsetTime-((int)(sunsetTime)))), (int)sunsetTime+12, 0, 0, 0, 0, 0, 0, 0, 0};
-	static char sunrize_text[] = "00:00";
-	static char sunset_text[] = "00:00";
-	static char twilight_text[] = "-40m+";
-	strftime(sunrize_text, sizeof(sunrize_text), "%H:%M", &sunrize);
-	strftime(sunset_text, sizeof(sunset_text), "%H:%M", &sunset);
-	snprintf(twilight_text, sizeof(twilight_text), "-%dm+", (int)(twilightTime*60));
-	text_layer_set_text(sunrize_layer, sunrize_text);
-	text_layer_set_text(sunset_layer, sunset_text);
-	text_layer_set_text(twilight_layer, twilight_text);
 }
 
 static void update_display() {
@@ -112,6 +74,52 @@ static void update_display() {
 	strftime(date_text, sizeof(date_text), "%a-%F", t);
 	text_layer_set_text(date_layer,date_text);
 
+	time_t utc = now + utc_offset*60;
+	const struct tm *utc_t = localtime(&utc);
+	static char utc_text[] = "00:00 UTC";
+	strftime(utc_text, sizeof(utc_text), "%H:%M UTC", utc_t);
+	if( (now - location_update_time) > location_expiration )
+		text_layer_set_font(utc_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+	else
+		text_layer_set_font(utc_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	text_layer_set_text(utc_layer, utc_text);
+}
+
+static void update_location() {
+//	static char location_text[] = "+12.1234 -123.1234";
+//	int lat_a = lat/location_decimals;
+//	int lat_b = lat-lat_a*location_decimals;
+//	lat_b = lat_b>0 ? lat_b : -1*lat_b;
+//	int lon_a = lon/location_decimals;
+//	int lon_b = lon-lon_a*location_decimals;
+//	lon_b = lon_b>0 ? lon_b : -1*lon_b;
+//	snprintf(location_text, sizeof(location_text), "%+d.%.3d %+d.%.3d", lat_a, lat_b/10, lon_a, lon_b/10);
+//	if( (time(NULL) - location_update_time) > location_expiration )
+//		text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+//	else
+//		text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+//	text_layer_set_text(location_layer, location_text);
+
+	time_t now = time(NULL);
+	struct tm *t = localtime(&now);
+	float sunriseTime = calcSunRise(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
+	float sunsetTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
+	float twilightTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_CIVIL) - sunsetTime; 
+	adjustTimezone(&sunriseTime);
+	adjustTimezone(&sunsetTime);
+	struct tm sunrize = {0, (int)(60*(sunriseTime-((int)(sunriseTime)))), (int)sunriseTime-12, 0, 0, 0, 0, 0, 0, 0, 0};
+	struct tm sunset = {0, (int)(60*(sunsetTime-((int)(sunsetTime)))), (int)sunsetTime+12, 0, 0, 0, 0, 0, 0, 0, 0};
+	static char sunrize_text[] = "00:00";
+	static char sunset_text[] = "00:00";
+	static char twilight_text[] = "40m";
+	strftime(sunrize_text, sizeof(sunrize_text), "%H:%M", &sunrize);
+	strftime(sunset_text, sizeof(sunset_text), "%H:%M", &sunset);
+	snprintf(twilight_text, sizeof(twilight_text), "%dm", (int)(twilightTime*60));
+	text_layer_set_text(sunrize_layer, sunrize_text);
+	text_layer_set_text(sunset_layer, sunset_text);
+	text_layer_set_text(twilight_layer, twilight_text);
+
+	update_display();
 }
 
 static void out_sent_handler(DictionaryIterator *sent, void *context) {
@@ -119,20 +127,20 @@ static void out_sent_handler(DictionaryIterator *sent, void *context) {
 }
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
 	//outgoing message failed
-	switch(reason) {
-		case APP_MSG_SEND_TIMEOUT:
-			text_layer_set_text(locaux_layer, "com timeout"); break;
-		case APP_MSG_SEND_REJECTED:
-			text_layer_set_text(locaux_layer, "com rejected"); break;
-		case APP_MSG_NOT_CONNECTED:
-			text_layer_set_text(locaux_layer, "com disconnected"); break;
-		case APP_MSG_APP_NOT_RUNNING:
-			text_layer_set_text(locaux_layer, "com not running"); break;
-		case APP_MSG_BUSY:
-			text_layer_set_text(locaux_layer, "com busy"); break;
-		default:
-			text_layer_set_text(locaux_layer, "com failure"); break;
-	}
+	// switch(reason) {
+	// 	case APP_MSG_SEND_TIMEOUT:
+	// 		text_layer_set_text(locaux_layer, "com timeout"); break;
+	// 	case APP_MSG_SEND_REJECTED:
+	// 		text_layer_set_text(locaux_layer, "com rejected"); break;
+	// 	case APP_MSG_NOT_CONNECTED:
+	// 		text_layer_set_text(locaux_layer, "com disconnected"); break;
+	// 	case APP_MSG_APP_NOT_RUNNING:
+	// 		text_layer_set_text(locaux_layer, "com not running"); break;
+	// 	case APP_MSG_BUSY:
+	// 		text_layer_set_text(locaux_layer, "com busy"); break;
+	// 	default:
+	// 		text_layer_set_text(locaux_layer, "com failure"); break;
+	// }
 	update_location();
 }
 static void in_received_handler(DictionaryIterator *received, void *context) {
@@ -148,25 +156,25 @@ static void in_received_handler(DictionaryIterator *received, void *context) {
 	if(lon_tuple) {
 		if(!errorflag)
 			lon = lon_tuple->value->int32;
-		else {
-			switch(lon_tuple->value->int32) {
-				case 1:
-					text_layer_set_text(locaux_layer, "permission denied");
-					break;
-				case 2:
-					text_layer_set_text(locaux_layer, "unavailable");
-					break;
-				case 3:
-					text_layer_set_text(locaux_layer, "timeout");
-					break;
-			}
-		}
+		// else {
+		// 	switch(lon_tuple->value->int32) {
+		// 		case 1:
+		// 			text_layer_set_text(locaux_layer, "permission denied");
+		// 			break;
+		// 		case 2:
+		// 			text_layer_set_text(locaux_layer, "unavailable");
+		// 			break;
+		// 		case 3:
+		// 			text_layer_set_text(locaux_layer, "timeout");
+		// 			break;
+		// 	}
+		// }
 	}
 	if(!errorflag) {
-		Tuple *aux_tuple = dict_find(received, GPS_AUX_RESPONSE);
-		if(aux_tuple) {
-			text_layer_set_text(locaux_layer, aux_tuple->value->cstring);
-		}
+		// Tuple *aux_tuple = dict_find(received, GPS_AUX_RESPONSE);
+		// if(aux_tuple) {
+		// 	text_layer_set_text(locaux_layer, aux_tuple->value->cstring);
+		// }
 		Tuple *utc_offset_tuple = dict_find(received, GPS_UTC_OFFSET_RESPONSE);
 		if(utc_offset_tuple) {
 			utc_offset = utc_offset_tuple->value->int32;
@@ -226,15 +234,27 @@ static void init(void) {
 	window_set_background_color(window,GColorWhite);
 	Layer *root_layer = window_get_root_layer(window);
 	GRect frame = layer_get_frame(root_layer);
+	int layer_height = 0;
+	int layer_accumulator = 0;
 
-	int layer_height = 46;
-	int layer_accumulator = layer_height;
-	time_layer = text_layer_create(GRect(0,0,frame.size.w, layer_height));
+	layer_height = 22;
+	utc_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	text_layer_set_background_color(utc_layer,GColorBlack);
+	text_layer_set_text_color(utc_layer,GColorWhite);
+	text_layer_set_font(utc_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	text_layer_set_text_alignment(utc_layer,GTextAlignmentCenter);
+	text_layer_set_text(utc_layer, "UTC");
+	layer_add_child(root_layer,text_layer_get_layer(utc_layer));
+	layer_accumulator += layer_height;
+
+	layer_height = 46;
+	time_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w, layer_height));
 	text_layer_set_background_color(time_layer,GColorBlack);
 	text_layer_set_text_color(time_layer,GColorWhite);
 	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_MEDIUM_NUMBERS));
 	text_layer_set_text_alignment(time_layer,GTextAlignmentCenter);
 	layer_add_child(root_layer,text_layer_get_layer(time_layer));
+	layer_accumulator += layer_height;
 
 	layer_height = 28;
 	date_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
@@ -281,25 +301,25 @@ static void init(void) {
 	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
 	layer_accumulator += layer_height;
 
-	layer_height = 22;
-	location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
-	text_layer_set_background_color(location_layer, GColorBlack);
-	text_layer_set_text_color(location_layer, GColorWhite);
-	text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-	text_layer_set_text_alignment(location_layer, GTextAlignmentCenter);
-	text_layer_set_text(location_layer, "+0.0000 +0.0000");
-	layer_add_child(root_layer, text_layer_get_layer(location_layer));
-	layer_accumulator += layer_height;
+	// layer_height = 22;
+	// location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	// text_layer_set_background_color(location_layer, GColorBlack);
+	// text_layer_set_text_color(location_layer, GColorWhite);
+	// text_layer_set_font(location_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	// text_layer_set_text_alignment(location_layer, GTextAlignmentCenter);
+	// text_layer_set_text(location_layer, "+0.0000 +0.0000");
+	// layer_add_child(root_layer, text_layer_get_layer(location_layer));
+	// layer_accumulator += layer_height;
 
-	layer_height = 22;
-	locaux_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
-	text_layer_set_background_color(locaux_layer, GColorBlack);
-	text_layer_set_text_color(locaux_layer, GColorWhite);
-	text_layer_set_font(locaux_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-	text_layer_set_text_alignment(locaux_layer, GTextAlignmentCenter);
-	text_layer_set_text(locaux_layer, "accuracy: n.a.");
-	//layer_add_child(root_layer, text_layer_get_layer(locaux_layer));
-	//layer_accumulator += layer_height;
+	// layer_height = 22;
+	// locaux_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
+	// text_layer_set_background_color(locaux_layer, GColorBlack);
+	// text_layer_set_text_color(locaux_layer, GColorWhite);
+	// text_layer_set_font(locaux_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	// text_layer_set_text_alignment(locaux_layer, GTextAlignmentCenter);
+	// text_layer_set_text(locaux_layer, "accuracy: n.a.");
+	// layer_add_child(root_layer, text_layer_get_layer(locaux_layer));
+	// layer_accumulator += layer_height;
 
 	layer_height = 22;
 	battery_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w/2,layer_height));
@@ -333,7 +353,7 @@ static void init(void) {
 		lat = 0;
 	if(persist_exists(lon_key)) {
 		lon = persist_read_int(lon_key);
-		text_layer_set_text(locaux_layer, "cached data");
+		// text_layer_set_text(locaux_layer, "cached data");
 	}
 	else
 		lon = 0;
@@ -364,14 +384,15 @@ static void deinit(void) {
 	bluetooth_connection_service_unsubscribe();
 	accel_tap_service_unsubscribe();
 	app_message_deregister_callbacks();
+	text_layer_destroy(utc_layer);
 	text_layer_destroy(time_layer);
 	text_layer_destroy(date_layer);
 	text_layer_destroy(sunrize_layer);
 	text_layer_destroy(sunset_layer);
 	text_layer_destroy(twilight_layer);
 	text_layer_destroy(timer_layer);
-	text_layer_destroy(location_layer);
-	text_layer_destroy(locaux_layer);
+	// text_layer_destroy(location_layer);
+	// text_layer_destroy(locaux_layer);
 	text_layer_destroy(battery_layer);
 	text_layer_destroy(bluetooth_layer);
 	window_destroy(window);

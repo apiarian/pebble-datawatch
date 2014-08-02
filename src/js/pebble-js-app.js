@@ -18,7 +18,7 @@ Pebble.addEventListener('appmessage',
 								'gps_lat_response': ((p.coords.latitude*location_decimals)|0),
 								'gps_lon_response': ((p.coords.longitude*location_decimals)|0),
 								'gps_aux_response': 'accuracy: ' + ((p.coords.accuracy)|0) + 'm',
-								'gps_utc_offset_response': new Date().getTimezoneOffset() / 60
+								'gps_utc_offset_response': new Date().getTimezoneOffset()
 							}, function(e) {
 								console.log('Sent GPS');
 							}, function(e) {
