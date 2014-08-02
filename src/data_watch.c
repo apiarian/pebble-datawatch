@@ -9,7 +9,7 @@ enum {
 };
 
 const int location_decimals = 1e4;
-const time_t location_expiration = (60*1)+30;
+const time_t location_expiration = (60*5)+90;
 const uint32_t lat_key = 0;
 const uint32_t lon_key = 1;
 const uint32_t utc_key = 2;
