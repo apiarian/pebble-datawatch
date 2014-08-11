@@ -86,6 +86,7 @@ static void update_display() {
 }
 
 static void update_location() {
+// skip debug stuff
 //	static char location_text[] = "+12.1234 -123.1234";
 //	int lat_a = lat/location_decimals;
 //	int lat_b = lat-lat_a*location_decimals;
@@ -127,6 +128,7 @@ static void out_sent_handler(DictionaryIterator *sent, void *context) {
 }
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
 	//outgoing message failed
+	// skip debug stuff
 	// switch(reason) {
 	// 	case APP_MSG_SEND_TIMEOUT:
 	// 		text_layer_set_text(locaux_layer, "com timeout"); break;
@@ -156,6 +158,7 @@ static void in_received_handler(DictionaryIterator *received, void *context) {
 	if(lon_tuple) {
 		if(!errorflag)
 			lon = lon_tuple->value->int32;
+		// skip the debug stuff
 		// else {
 		// 	switch(lon_tuple->value->int32) {
 		// 		case 1:
@@ -171,6 +174,7 @@ static void in_received_handler(DictionaryIterator *received, void *context) {
 		// }
 	}
 	if(!errorflag) {
+		// skip the debug stuff
 		// Tuple *aux_tuple = dict_find(received, GPS_AUX_RESPONSE);
 		// if(aux_tuple) {
 		// 	text_layer_set_text(locaux_layer, aux_tuple->value->cstring);
@@ -207,21 +211,10 @@ static void handle_tick(struct tm* tick_time, TimeUnits unit_changed) {
 	int seconds = elapsed - hours*3600 - minutes*60;
 	struct tm t = {seconds, minutes, hours, 0, 0, 0, 0, 0, 0, 0, 0};
 	strftime(timer_text, sizeof(timer_text), "%H:%M:%S", &t);
-	//snprintf(timer_text, sizeof(timer_text), "%d:%d:%d", hours, minutes, seconds);
 	text_layer_set_text(timer_layer, timer_text);
 }
 
 static void handle_tap(AccelAxisType axis, int32_t direction) {
-//	static char tap_text[] = "1234567890123";
-//	switch(axis) {
-//		case ACCEL_AXIS_X:
-//			snprintf(tap_text, sizeof(tap_text), "tap X %d", (int)direction); break;
-//		case ACCEL_AXIS_Y:
-//			snprintf(tap_text, sizeof(tap_text), "tap Y %d", (int)direction); break;
-//		case ACCEL_AXIS_Z:
-//			snprintf(tap_text, sizeof(tap_text), "tap Z %d", (int)direction); break;
-//	}
-//	text_layer_set_text(timer_layer, tap_text);
 	text_layer_set_text(timer_layer, "00:00:00");
 	time(&timer_start);
 }
@@ -301,6 +294,7 @@ static void init(void) {
 	layer_add_child(root_layer, text_layer_get_layer(sunset_layer));
 	layer_accumulator += layer_height;
 
+	// skip the debug stuff
 	// layer_height = 22;
 	// location_layer = text_layer_create(GRect(0,layer_accumulator,frame.size.w,layer_height));
 	// text_layer_set_background_color(location_layer, GColorBlack);
