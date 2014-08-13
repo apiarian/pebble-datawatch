@@ -105,7 +105,12 @@ static void update_location() {
 	struct tm *t = localtime(&now);
 	float sunriseTime = calcSunRise(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
 	float sunsetTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_OFFICIAL); 
-	float twilightTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_CIVIL) - sunsetTime; 
+	float twilightTime = calcSunSet(t->tm_year, t->tm_mon+1, t->tm_mday, 1.0*lat/location_decimals, 1.0*lon/location_decimals, ZENITH_CIVIL); 
+	twilightTime = twilightTime > sunsetTime ? twilightTime : twilightTime + 24.0;
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrizeTime*1000 = %d", ((int)(sunriseTime*1000)));
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "sunsetTime*1000 = %d", ((int)(sunsetTime*1000)));
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "twilightTime*1000 = %d", ((int)(twilightTime*1000)));
+	twilightTime = twilightTime - sunsetTime;
 	adjustTimezone(&sunriseTime);
 	adjustTimezone(&sunsetTime);
 	struct tm sunrize = {0, (int)(60*(sunriseTime-((int)(sunriseTime)))), (int)sunriseTime-12, 0, 0, 0, 0, 0, 0, 0, 0};
